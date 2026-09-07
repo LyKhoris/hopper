@@ -6,15 +6,17 @@ multilib, osu! tablet fix, plus your own scripts. Pick via checklist TUI or plai
 ## Use from a fresh install (no clone needed)
 
 ```bash
-curl -fsSL https://lykhoris.github.io/hopper | bash -s -- --yes
+curl -fsSL https://lykhoris.github.io/hopper | bash
 ```
 
 - That short address just fetches the real script — same trick as `christitus.com/linux` for linutil.
+- Shows the package + script list first, then asks for confirmation. Nothing runs unapproved.
 - What it installs by itself: only `git` (if missing, needed to download hopper).
   Everything else is your own list below, which you can read on GitHub first.
-- Flags: `--yes` (skip confirm), `--dry-run` (print only), `--only bootstrap,packages,fcitx,scripts`, `--list`.
+- Optional flags (go after `bash -s --`, e.g. `| bash -s -- --dry-run`):
+  `--yes` (skip confirm), `--dry-run` (print only), `--only bootstrap,packages,fcitx,scripts`, `--list`.
 - If the short URL ever fails, fallback is the direct address:
-  `bash <(curl -fsSL https://raw.githubusercontent.com/LyKhoris/hopper/main/hopper.sh) --yes`
+  `bash <(curl -fsSL https://raw.githubusercontent.com/LyKhoris/hopper/main/hopper.sh)`
 
 ## Use from a clone (to edit your lists)
 
@@ -23,7 +25,7 @@ git clone <your-hopper-url> && cd hopper
 bun install
 bun index.ts        # checklist TUI: Space toggle, Up/Down move, Enter run, d dry-run, q quit
 # or without TUI:
-bash run.sh --yes
+bash run.sh
 ```
 
 ## Edit your setup (no coding needed)

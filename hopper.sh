@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # hopper.sh — remote entrypoint. Pipe it straight from GitHub, no manual install.
 #
-#   curl -fsSL https://lykhoris.github.io/hopper | bash -s -- --yes
-#   (fallback) bash <(curl -fsSL https://raw.githubusercontent.com/LyKhoris/hopper/main/hopper.sh) --yes
+#   curl -fsSL https://lykhoris.github.io/hopper | bash
+#   (fallback) bash <(curl -fsSL https://raw.githubusercontent.com/LyKhoris/hopper/main/hopper.sh)
+# Flags (optional, after `bash -s --`): --yes --dry-run --only a,b,c --list
 #
 # What it installs: NOTHING extra, except the bare minimum to fetch + run hopper:
 #   - git (via pacman, only if missing — needed to clone the repo)
