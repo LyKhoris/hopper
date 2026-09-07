@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # hopper.sh — remote entrypoint. Pipe it straight from GitHub, no manual install.
 #
-#   bash <(curl -fsSL https://raw.githubusercontent.com/LyKhoris/hopper/main/hopper.sh) --yes
-#   curl -fsSL https://raw.githubusercontent.com/LyKhoris/hopper/main/hopper.sh | bash -s -- --yes
+#   curl -fsSL https://lykhoris.github.io/hopper | bash -s -- --yes
+#   (fallback) bash <(curl -fsSL https://raw.githubusercontent.com/LyKhoris/hopper/main/hopper.sh) --yes
 #
 # What it installs: NOTHING extra, except the bare minimum to fetch + run hopper:
 #   - git (via pacman, only if missing — needed to clone the repo)
@@ -44,11 +44,20 @@ else
 fi
 
 # 4. Clone or update the repo (no build, no bun, no node needed for bash mode).
+# HOPPER_DIR is a disposable cache, never a workspace, so a cache that can't
+# fast-forward (diverged, shallow-clone quirks) is reset to the remote instead
+# of silently running stale code. Run logs (untracked) survive the reset.
 if [ -d "$HOPPER_DIR/.git" ]; then
   say "Updating $HOPPER_DIR ($HOPPER_BRANCH)..."
-  git -C "$HOPPER_DIR" fetch --depth 1 origin "$HOPPER_BRANCH"
-  git -C "$HOPPER_DIR" checkout "$HOPPER_BRANCH"
-  git -C "$HOPPER_DIR" pull --ff-only origin "$HOPPER_BRANCH" || true
+  if git -C "$HOPPER_DIR" fetch --depth 1 origin "$HOPPER_BRANCH" >/dev/null 2>&1; then
+    if git -C "$HOPPER_DIR" checkout -q -B "$HOPPER_BRANCH" FETCH_HEAD >/dev/null 2>&1; then
+      say "Now at $(git -C "$HOPPER_DIR" rev-parse --short HEAD)."
+    else
+      echo "WARNING: downloaded the update but couldn't apply it. Running the local copy — may be outdated." >&2
+    fi
+  else
+    echo "WARNING: can't reach GitHub (offline?). Running the local copy from $(git -C "$HOPPER_DIR" log -1 --format=%cs 2>/dev/null || echo an unknown date) — may be outdated." >&2
+  fi
 else
   say "Cloning $HOPPER_REPO -> $HOPPER_DIR ..."
   rm -rf "$HOPPER_DIR"
