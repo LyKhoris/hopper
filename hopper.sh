@@ -20,7 +20,13 @@ HOPPER_REPO="${HOPPER_REPO:-https://github.com/LyKhoris/hopper.git}"
 HOPPER_DIR="${HOPPER_DIR:-$HOME/.local/share/hopper}"
 HOPPER_BRANCH="${HOPPER_BRANCH:-main}"
 
-say() { echo "[hopper-remote] $*"; }
+say() {
+  # Quiet by default: the only thing you should see before the question is
+  # the package list + script list. Set HOPPER_VERBOSE=1 to debug fetching.
+  if [ "${HOPPER_VERBOSE:-0}" = "1" ]; then
+    echo "[hopper-remote] $*"
+  fi
+}
 
 # 1. If we already sit inside a hopper checkout (local dev), just run it.
 SELF_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd || pwd)"
@@ -47,21 +53,22 @@ fi
 # HOPPER_DIR is a disposable cache, never a workspace, so a cache that can't
 # fast-forward (diverged, shallow-clone quirks) is reset to the remote instead
 # of silently running stale code. Run logs (untracked) survive the reset.
+# Git output stays hidden unless something fails.
+out=""; out2=""
 if [ -d "$HOPPER_DIR/.git" ]; then
-  say "Updating $HOPPER_DIR ($HOPPER_BRANCH)..."
-  if git -C "$HOPPER_DIR" fetch --depth 1 origin "$HOPPER_BRANCH" >/dev/null 2>&1; then
-    if git -C "$HOPPER_DIR" checkout -q -B "$HOPPER_BRANCH" FETCH_HEAD >/dev/null 2>&1; then
-      say "Now at $(git -C "$HOPPER_DIR" rev-parse --short HEAD)."
-    else
-      echo "WARNING: downloaded the update but couldn't apply it. Running the local copy — may be outdated." >&2
-    fi
+  if out=$(git -C "$HOPPER_DIR" fetch --depth 1 origin "$HOPPER_BRANCH" 2>&1) \
+    && out2=$(git -C "$HOPPER_DIR" checkout -q -B "$HOPPER_BRANCH" FETCH_HEAD 2>&1); then
+    : # updated quietly; run.sh shows the plan next
   else
-    echo "WARNING: can't reach GitHub (offline?). Running the local copy from $(git -C "$HOPPER_DIR" log -1 --format=%cs 2>/dev/null || echo an unknown date) — may be outdated." >&2
+    echo "WARNING: can't update hopper ($out $out2). Running local copy — may be outdated." >&2
   fi
 else
-  say "Cloning $HOPPER_REPO -> $HOPPER_DIR ..."
   rm -rf "$HOPPER_DIR"
-  git clone --depth 1 --branch "$HOPPER_BRANCH" "$HOPPER_REPO" "$HOPPER_DIR"
+  if ! out=$(git clone --depth 1 --branch "$HOPPER_BRANCH" "$HOPPER_REPO" "$HOPPER_DIR" 2>&1); then
+    echo "ERROR: clone failed:" >&2
+    echo "$out" >&2
+    exit 1
+  fi
 fi
 
 say "Running hopper from $HOPPER_DIR ..."

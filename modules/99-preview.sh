@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 99-preview: one short readable plan — only what WILL change. Installs nothing.
+# 99-preview: package list + script list, nothing else. Installs nothing.
 # Shown before every run (CLI question + TUI confirm screen). Always exits 0.
 # Env: HOPPER_ONLY="bootstrap,packages,fcitx,scripts" (empty = all).
 set -euo pipefail
@@ -12,15 +12,17 @@ want() {
   [ -z "$ONLY" ] || [[ ",$ONLY," == *",$1,"* ]]
 }
 
-missing=() # package names that will be installed
-have_n=0   # already-installed count
+all_pkgs=()    # every package name, in order
+to_install=()  # the ones missing (will be installed)
+have_pkgs=()   # the ones already installed
 
 collect() {
-  # collect <pkg> — sort into missing[] or bump have_n. Never fails.
+  # collect <pkg> — record it, sort missing vs installed. Never fails.
+  all_pkgs+=("$1")
   if pacman -Q "$1" >/dev/null 2>&1; then
-    have_n=$((have_n + 1))
+    have_pkgs+=("$1")
   else
-    missing+=("$1")
+    to_install+=("$1")
   fi
 }
 
@@ -34,6 +36,14 @@ script_title() {
   echo "$t"
 }
 
+script_needs_run() {
+  # script_needs_run <file> — false (skip) if it reports already applied.
+  if grep -q '^SUPPORTS_CHECK=1' "$1" 2>/dev/null && bash "$1" --check >/dev/null 2>&1; then
+    return 1
+  fi
+  return 0
+}
+
 join_pretty() {
   # join_pretty a b c -> "a, b, c"
   local out="$1"
@@ -44,18 +54,12 @@ join_pretty() {
   echo "$out"
 }
 
-echo "Hopper plan:"
+shown=0
 
-if want bootstrap; then
-  echo "  ! bootstrap first runs a FULL SYSTEM UPGRADE (pacman -Syu)"
-  if ! command -v yay >/dev/null 2>&1; then
-    echo "  will also build: yay-bin"
-  fi
-fi
-
-if want packages; then
-  missing=(); have_n=0
-  if [ -f "$HOPPER_ROOT/packages.txt" ]; then
+if want packages || want fcitx; then
+  shown=1
+  all_pkgs=(); to_install=(); have_pkgs=()
+  if want packages && [ -f "$HOPPER_ROOT/packages.txt" ]; then
     while IFS= read -r line || [ -n "$line" ]; do
       pkg="$(echo "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
       if [ -z "$pkg" ] || [[ "$pkg" == \#* ]]; then
@@ -64,44 +68,37 @@ if want packages; then
       collect "$pkg"
     done < "$HOPPER_ROOT/packages.txt"
   fi
-  if [ "${#missing[@]}" -gt 0 ]; then
-    echo "  packages to install (${#missing[@]}): $(join_pretty "${missing[@]}")"
+  if want fcitx; then
+    for pkg in fcitx5 fcitx5-configtool fcitx5-gtk fcitx5-qt fcitx5-chinese-addons fcitx5-mozc; do
+      collect "$pkg"
+    done
   fi
-  if [ "$have_n" -gt 0 ]; then
-    echo "  packages already installed ($have_n), skipping."
-  fi
-fi
-
-if want fcitx; then
-  missing=(); have_n=0
-  for pkg in fcitx5 fcitx5-configtool fcitx5-gtk fcitx5-qt fcitx5-chinese-addons fcitx5-mozc; do
-    collect "$pkg"
-  done
-  if [ "${#missing[@]}" -gt 0 ]; then
-    echo "  keyboards to install (${#missing[@]}): $(join_pretty "${missing[@]}")"
-  fi
-  if [ "$have_n" -gt 0 ]; then
-    echo "  keyboards already installed ($have_n), skipping."
-  fi
-  ENV_FILE="$HOME/.config/environment.d/fcitx.conf"
-  if grep -q "GTK_IM_MODULE=fcitx" "$ENV_FILE" 2>/dev/null \
-    && grep -q "QT_IM_MODULE=fcitx" "$ENV_FILE" 2>/dev/null \
-    && grep -q "XMODIFIERS=@im=fcitx" "$ENV_FILE" 2>/dev/null; then
-    : # already set, nothing to say
+  if [ "${#to_install[@]}" -gt 0 ] && [ "${#have_pkgs[@]}" -eq 0 ]; then
+    echo "Packages to install (${#to_install[@]}): $(join_pretty "${to_install[@]}")"
+  elif [ "${#to_install[@]}" -gt 0 ]; then
+    echo "Packages to install (${#to_install[@]}): $(join_pretty "${to_install[@]}")"
+    echo "Already installed (${#have_pkgs[@]}): $(join_pretty "${have_pkgs[@]}")"
   else
-    echo "  will also set up keyboard env vars (logout/in needed after)"
+    echo "Packages (${#all_pkgs[@]}), all installed: $(join_pretty "${all_pkgs[@]}")"
   fi
 fi
 
 if want scripts; then
+  shown=1
   titles=()
   for s in "$HOPPER_ROOT"/scripts/[0-9]*-*.sh; do
-    if [ -f "$s" ]; then
+    if [ -f "$s" ] && script_needs_run "$s"; then
       titles+=("$(script_title "$s")")
     fi
   done
   if [ "${#titles[@]}" -gt 0 ]; then
-    echo "  scripts to run (${#titles[@]}): $(join_pretty "${titles[@]}")"
+    echo "Scripts (${#titles[@]}): $(join_pretty "${titles[@]}")"
+  else
+    echo "Scripts: (none)"
   fi
+fi
+
+if [ "$shown" -eq 0 ]; then
+  echo "(preview only covers packages + scripts)"
 fi
 exit 0

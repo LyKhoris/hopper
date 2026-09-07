@@ -8,7 +8,22 @@
 # can't break your hop again.
 # HOPPER_TITLE is the short display name shown in the pre-install preview.
 HOPPER_TITLE="Fix osu! tablet detection"
+# This script supports `--check`: exit 0 = already applied, exit 1 = work to do.
+SUPPORTS_CHECK=1
 set -euo pipefail
+
+if [ "${1:-}" = "--check" ]; then
+  # Applied = current rules + configs in place, old leftovers gone.
+  # Local file reads only: no sudo, no network, instant.
+  ok=1
+  grep -q "OpenTabletDriver" /etc/udev/rules.d/70-opentabletdriver.rules 2>/dev/null || ok=0
+  grep -q "install wacom /usr/bin/true" /etc/modprobe.d/99-opentabletdriver.conf 2>/dev/null || ok=0
+  grep -qx "uinput" /etc/modules-load.d/opentabletdriver.conf 2>/dev/null || ok=0
+  if [ -f /etc/udev/rules.d/90-opentabletdriver.rules ]; then ok=0; fi
+  if [ -f /etc/udev/rules.d/99-opentabletdriver.rules ]; then ok=0; fi
+  if [ -f /etc/modprobe.d/blacklist.conf ]; then ok=0; fi
+  if [ "$ok" = "1" ]; then exit 0; else exit 1; fi
+fi
 
 DRY_RUN="${DRY_RUN:-0}"
 

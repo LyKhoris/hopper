@@ -32,6 +32,13 @@ fail=0
 failed_list=""
 
 for s in "${SCRIPTS[@]}"; do
+  # Fast path: scripts advertising SUPPORTS_CHECK=1 can report "already
+  # applied" without doing any work (no clone, no sudo, no network).
+  if grep -q '^SUPPORTS_CHECK=1' "$s" 2>/dev/null && bash "$s" --check >/dev/null 2>&1; then
+    log "$(basename "$s") already applied, skipping."
+    ok=$((ok + 1))
+    continue
+  fi
   log "Running $(basename "$s")..."
   if [ "$DRY_RUN" = "1" ]; then
     echo "+ bash $s (dry-run, skipped)"

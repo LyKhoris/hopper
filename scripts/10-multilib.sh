@@ -3,7 +3,17 @@
 # Needed for steam, gamescope, gamemode (32-bit libs).
 # Safe to run twice. DRY_RUN=1 supported.
 HOPPER_TITLE="Enable multilib repo"
+# This script supports `--check`: exit 0 = already applied, exit 1 = work to do.
+SUPPORTS_CHECK=1
 set -euo pipefail
+
+if [ "${1:-}" = "--check" ]; then
+  if grep -q "^\[multilib\]" /etc/pacman.conf 2>/dev/null; then
+    exit 0
+  else
+    exit 1
+  fi
+fi
 
 PACMAN_CONF="/etc/pacman.conf"
 

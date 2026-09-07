@@ -102,6 +102,24 @@ async function runSelected() {
   render();
 }
 
+// Wrap long lines on word boundaries so full package names stay visible.
+function wrapLine(line: string, width = 100): string[] {
+  const words = line.split(" ");
+  const lines: string[] = [];
+  let cur = "";
+  for (const word of words) {
+    const next = cur ? cur + " " + word : word;
+    if (next.length > width && cur) {
+      lines.push(cur);
+      cur = word;
+    } else {
+      cur = next;
+    }
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
 // Confirm screen: show the FULL preview before anything runs.
 // Same source as `bash run.sh` (modules/99-preview.sh), so both agree.
 async function gotoConfirm() {
@@ -121,7 +139,7 @@ async function gotoConfirm() {
     });
     const out = await new Response(proc.stdout).text();
     await proc.exited;
-    previewLines = out.split("\n").map((l) => l.slice(0, 160));
+    previewLines = out.split("\n").flatMap((l) => wrapLine(l));
   } catch {
     previewLines = ["Could not build preview. Run DRY_RUN=1 bash run.sh to see the plan."];
   }

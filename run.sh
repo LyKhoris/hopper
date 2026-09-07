@@ -71,18 +71,15 @@ if ! command -v pacman >/dev/null 2>&1; then
   exit 1
 fi
 
-# Show the FULL plan first — every package and change — then ask.
+# Show the plan first — package list + script list, nothing else — then ask.
 # Preview always prints, even with --yes (so logs show what was approved).
-export HOPPER_ONLY="$ONLY"
-bash "$HOPPER_ROOT/modules/99-preview.sh"
-
 LOGDIR="$HOPPER_ROOT/logs"
 mkdir -p "$LOGDIR"
 LOGFILE="$LOGDIR/hopper-$(date +%Y%m%d-%H%M%S).log"
-echo "Log: $LOGFILE"
-if [ "$DRY_RUN" = "1" ]; then
-  echo "(dry-run: commands will only be printed)"
-fi
+
+export HOPPER_ONLY="$ONLY"
+bash "$HOPPER_ROOT/modules/99-preview.sh"
+
 if [ "$ASSUME_YES" -ne 1 ]; then
   # Read from the terminal, not stdin: stdin may be the piped script itself
   # when run as `curl ... | bash`.
@@ -95,6 +92,8 @@ if [ "$ASSUME_YES" -ne 1 ]; then
     exit 0
   fi
 fi
+echo ""
+echo "Log: $LOGFILE"
 
 # Run each module, tee output to the log file.
 overall=0
