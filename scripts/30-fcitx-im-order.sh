@@ -38,9 +38,29 @@ for p in fcitx5 fcitx5-chinese-addons fcitx5-mozc; do
 done
 
 if [ "$DRY_RUN" = "1" ]; then
-  echo "+ write $PROFILE (order: keyboard-us, pinyin, mozc) (dry-run, skipped)"
-  echo "+ restart fcitx5 if running (dry-run, skipped)"
+  echo "+ stop fcitx5, write $PROFILE (order: keyboard-us, pinyin, mozc), start fcitx5 (dry-run, skipped)"
   exit 0
+fi
+
+# fcitx5 saves its config on exit, so the daemon must be FULLY STOPPED before
+# writing — otherwise it overwrites the new profile with the old one.
+was_running=0
+if systemctl --user is-active fcitx5.service >/dev/null 2>&1; then
+  say "Stopping fcitx5 first (it would overwrite the new profile otherwise) ..."
+  systemctl --user stop fcitx5.service 2>/dev/null || true
+  was_running=1
+elif [ -n "$(pgrep -x fcitx5 2>/dev/null || true)" ]; then
+  say "Stopping fcitx5 first (it would overwrite the new profile otherwise) ..."
+  pkill -x fcitx5 2>/dev/null || true
+  was_running=1
+fi
+if [ "$was_running" = "1" ]; then
+  for _ in $(seq 1 50); do
+    if [ -z "$(pgrep -x fcitx5 2>/dev/null || true)" ]; then
+      break
+    fi
+    sleep 0.1
+  done
 fi
 
 mkdir -p "$(dirname "$PROFILE")"
@@ -81,12 +101,21 @@ Layout=
 EOF
 say "Wrote $PROFILE"
 
-# Apply now if fcitx is already running; otherwise first login picks it up.
-if systemctl --user is-active fcitx5.service >/dev/null 2>&1; then
-  systemctl --user restart fcitx5.service 2>/dev/null || true
-  say "Restarted fcitx5, new order is live."
-elif [ -n "$(pgrep -x fcitx5 2>/dev/null || true)" ]; then
-  say "fcitx5 is running outside systemd — restart it (or log out/in) to apply."
+# Start the daemon again if it was running; otherwise first login picks it up.
+if [ "$was_running" = "1" ]; then
+  if systemctl --user is-enabled fcitx5.service >/dev/null 2>&1; then
+    if systemctl --user start fcitx5.service >/dev/null 2>&1; then
+      say "Started fcitx5, new order is live."
+    else
+      say "Couldn't restart fcitx5 — log out/in to apply."
+    fi
+  else
+    if fcitx5 -d >/dev/null 2>&1; then
+      say "Started fcitx5, new order is live."
+    else
+      say "Couldn't restart fcitx5 — log out/in to apply."
+    fi
+  fi
 else
   say "fcitx5 isn't running — order applies on next login."
 fi
