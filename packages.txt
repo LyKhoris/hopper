@@ -24,3 +24,4 @@ telegram-desktop
 zoxide
 ncdu
 dysk
+opencode
