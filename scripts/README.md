@@ -3,6 +3,7 @@
 Drop any `.sh` file here named `NN-name.sh`, for example:
 - `10-multilib.sh` — enable multilib repo (already included)
 - `20-opentabletdriver.sh` — fix osu! tablet detection (already included)
+- `30-fcitx-im-order.sh` — set fcitx input order EN -> Pinyin -> Mozc (already included)
 - `30-my-tweaks.sh` — anything you add later
 
 Rules (kept simple on purpose):
