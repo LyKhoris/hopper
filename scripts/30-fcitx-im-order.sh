@@ -39,6 +39,7 @@ done
 
 if [ "$DRY_RUN" = "1" ]; then
   echo "+ stop fcitx5, write $PROFILE (order: keyboard-us, pinyin, mozc), start fcitx5 (dry-run, skipped)"
+  echo "+ push env vars to this session so new apps work now (dry-run, skipped)"
   exit 0
 fi
 
@@ -119,3 +120,11 @@ if [ "$was_running" = "1" ]; then
 else
   say "fcitx5 isn't running — order applies on next login."
 fi
+
+# Same session, no logout: push the env vars into dbus + the user manager so
+# newly opened apps use fcitx right away. A script can't change the
+# environment of already-running apps — those still need a restart.
+export GTK_IM_MODULE=fcitx QT_IM_MODULE=fcitx XMODIFIERS="@im=fcitx"
+dbus-update-activation-environment GTK_IM_MODULE QT_IM_MODULE XMODIFIERS >/dev/null 2>&1 || true
+systemctl --user import-environment GTK_IM_MODULE QT_IM_MODULE XMODIFIERS >/dev/null 2>&1 || true
+say "New apps use the new order now; restart already-open apps (or log out/in) if they ignore input."

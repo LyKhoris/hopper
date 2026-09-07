@@ -109,6 +109,7 @@ Screens (single screen, no wizard):
 - [x] **Phase 10 — Skipped section + fcitx autostart:** preview ends with `Skipped (N): <installed package names>, <applied script titles>` below the will-do lines. fcitx step installs a systemd user unit (`~/.config/systemd/user/fcitx5.service`, default target, no sudo) + enables/starts it; custom units are kept as-is; no user session → loud warning with manual fallback.
 - [x] **Phase 11 — fcitx input order script:** `scripts/30-fcitx-im-order.sh` writes `~/.config/fcitx5/profile` (backed up first) with EN -> Pinyin -> Mozc + English default; `--check` passes if the order starts that way (extra IMs allowed); restarts the fcitx5 user service if active.
 - [x] **Phase 12 — stop-before-write fix:** fcitx5 saves its config ON EXIT, so `restart`-after-write let the old config clobber the new profile (diagnosed from the daemon-rewritten file on disk). Script now stops the daemon, waits for death, writes, then starts. Applied live + verified (daemon loaded pinyin addon, `--check` passes).
+- [x] **Phase 13 — immediate session apply:** order script pushes `GTK/QT_IM_MODULE` + `XMODIFIERS` into dbus + the systemd user manager after starting, so newly opened apps work with no logout. Already-open apps still need a restart (per-process env can't be changed from outside) — the script says so.
 - **v2 (out of scope):** dotfiles manager (bare git repo or stow), theming, Wayland autostart per-DE, snapshots.
 
 ## How to use (target UX)
