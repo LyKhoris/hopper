@@ -1,0 +1,26 @@
+# Hopper packages — one per line, # comments allowed
+# Installed with: yay -S --needed --noconfirm <pkg> (skips what's already installed)
+
+adwsteamgtk
+appimagelauncher
+equibop-bin
+osu-lazer-bin
+pear-desktop-bin
+protonplus
+seanime-denshi
+t3code-bin
+zen-browser-bin
+gamemode
+gamescope
+steam
+git
+github-cli
+gvfs-smb
+mpv
+nautilus
+sddm
+superfile
+telegram-desktop
+zoxide
+ncdu
+dysk

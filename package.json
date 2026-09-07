@@ -1,0 +1,16 @@
+{
+  "name": "hopper",
+  "version": "0.1.0",
+  "description": "Arch distro-hop bootstrapper with OpenTUI checklist",
+  "type": "module",
+  "scripts": {
+    "start": "bun index.ts"
+  },
+  "dependencies": {
+    "@opentui/core": "latest"
+  },
+  "devDependencies": {
+    "typescript": "latest",
+    "@types/bun": "latest"
+  }
+}
