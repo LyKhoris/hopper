@@ -6,6 +6,8 @@
 # which broke hardcoded paths. This script tries the repo first (new path, then
 # old path) and falls back to built-in known-good content, so a repo move
 # can't break your hop again.
+# HOPPER_TITLE is the short display name shown in the pre-install preview.
+HOPPER_TITLE="Fix osu! tablet detection"
 set -euo pipefail
 
 DRY_RUN="${DRY_RUN:-0}"

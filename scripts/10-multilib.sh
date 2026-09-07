@@ -2,6 +2,7 @@
 # 10-multilib: enable the [multilib] repo in /etc/pacman.conf if disabled.
 # Needed for steam, gamescope, gamemode (32-bit libs).
 # Safe to run twice. DRY_RUN=1 supported.
+HOPPER_TITLE="Enable multilib repo"
 set -euo pipefail
 
 PACMAN_CONF="/etc/pacman.conf"

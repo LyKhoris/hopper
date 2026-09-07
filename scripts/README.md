@@ -10,6 +10,9 @@ Rules (kept simple on purpose):
 2. Every script must be safe to run twice (check before you do).
 3. Support dry-run: wrap real changes so `DRY_RUN=1 bash scripts/30-foo.sh` only prints.
 4. Start each file with `set -euo pipefail`.
+5. Give it a short display name for the pre-install preview: `HOPPER_TITLE="Fix osu! tablet detection"`
+   (shown as `scripts to run (2): Enable multilib repo, Fix osu! tablet detection`).
+   Without it, the filename is prettified automatically.
 5. To test one script: `DRY_RUN=1 bash scripts/NN-name.sh`, then for real: `bash scripts/NN-name.sh`.
 
 The TUI checkbox "Run personal scripts" just runs all of these in order via `modules/30-scripts.sh`.
