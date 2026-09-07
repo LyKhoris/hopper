@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # 20-opentabletdriver: fix osu! tablet detection (OpenTabletDriver udev rules).
-# Cleaned up from the owner's original script: removed duplicate blocks,
-# shallow-clones to /tmp, backs up files before deleting, supports DRY_RUN=1.
-# Safe to run twice.
+# Safe to run twice. DRY_RUN=1 supported.
+#
+# History: OTD moved its packaging files from eng/linux/ to eng/bash/ (2024+),
+# which broke hardcoded paths. This script tries the repo first (new path, then
+# old path) and falls back to built-in known-good content, so a repo move
+# can't break your hop again.
 set -euo pipefail
 
 DRY_RUN="${DRY_RUN:-0}"
@@ -14,6 +17,30 @@ run() {
   else
     "$@"
   fi
+}
+
+# Known-good config content (verified against OTD repo). Used only if the
+# repo no longer ships these files.
+MODPROBE_CONTENT='install wacom /usr/bin/true
+install hid_uclogic /usr/bin/true'
+MODULES_LOAD_CONTENT='uinput'
+
+write_file() {
+  # write_file <path> <content> — writes only if missing or different.
+  local dest="$1" content="$2"
+  if [ -f "$dest" ] && [ "$(cat "$dest")" = "$content" ]; then
+    say "$(basename "$dest") already correct, skipping."
+    return 0
+  fi
+  if [ "$DRY_RUN" = "1" ]; then
+    echo "+ write $dest (dry-run, skipped)"
+    return 0
+  fi
+  if [ -f "$dest" ]; then
+    sudo cp -n "$dest" "$dest.bak" || true
+  fi
+  echo "$content" | sudo tee "$dest" >/dev/null
+  say "Wrote $dest"
 }
 
 say "Cleaning old OpenTabletDriver udev rules..."
@@ -46,12 +73,11 @@ run sudo modprobe uinput
 # These two may fail if modules aren't loaded — that's fine.
 run sudo rmmod wacom hid_uclogic 2>/dev/null || true
 
-say "Fetching fresh OTD rules (shallow clone to /tmp)..."
+say "Fetching fresh OTD udev rules (shallow clone to /tmp)..."
 WORKDIR="/tmp/OpenTabletDriver-hopper"
 if [ "$DRY_RUN" = "1" ]; then
   echo "+ git clone --depth 1 https://github.com/OpenTabletDriver/OpenTabletDriver.git $WORKDIR (dry-run, skipped)"
   echo "+ ./generate-rules.sh | sudo tee /etc/udev/rules.d/70-opentabletdriver.rules (dry-run, skipped)"
-  echo "+ sudo cp modprobe + modules-load configs (dry-run, skipped)"
 else
   if ! command -v git >/dev/null 2>&1; then
     echo "ERROR: git not found. Run modules/00-bootstrap.sh first." >&2
@@ -61,8 +87,33 @@ else
   git clone --depth 1 https://github.com/OpenTabletDriver/OpenTabletDriver.git "$WORKDIR"
   # Generate + install udev rules.
   bash "$WORKDIR/generate-rules.sh" | sudo tee /etc/udev/rules.d/70-opentabletdriver.rules >/dev/null
-  sudo cp "$WORKDIR/eng/linux/Generic/usr/lib/modprobe.d/99-opentabletdriver.conf" /etc/modprobe.d/99-opentabletdriver.conf
-  sudo cp "$WORKDIR/eng/linux/Generic/usr/lib/modules-load.d/opentabletdriver.conf" /etc/modules-load.d/opentabletdriver.conf
+  say "Wrote /etc/udev/rules.d/70-opentabletdriver.rules"
+
+  # Module configs: prefer the repo copy (new layout first, old layout
+  # second), fall back to built-in content if both disappear one day.
+  MODPROBE_SRC=""; MODULES_SRC=""
+  for base in "$WORKDIR/eng/bash/Generic" "$WORKDIR/eng/linux/Generic"; do
+    if [ -f "$base/usr/lib/modprobe.d/99-opentabletdriver.conf" ]; then
+      MODPROBE_SRC="$base/usr/lib/modprobe.d/99-opentabletdriver.conf"
+    fi
+    if [ -f "$base/usr/lib/modules-load.d/opentabletdriver.conf" ]; then
+      MODULES_SRC="$base/usr/lib/modules-load.d/opentabletdriver.conf"
+    fi
+  done
+  if [ -n "$MODPROBE_SRC" ]; then
+    say "Using repo config: ${MODPROBE_SRC#$WORKDIR/}"
+    sudo cp "$MODPROBE_SRC" /etc/modprobe.d/99-opentabletdriver.conf
+  else
+    say "Repo layout changed again, using built-in config."
+    write_file /etc/modprobe.d/99-opentabletdriver.conf "$MODPROBE_CONTENT"
+  fi
+  if [ -n "$MODULES_SRC" ]; then
+    say "Using repo config: ${MODULES_SRC#$WORKDIR/}"
+    sudo cp "$MODULES_SRC" /etc/modules-load.d/opentabletdriver.conf
+  else
+    say "Repo layout changed again, using built-in config."
+    write_file /etc/modules-load.d/opentabletdriver.conf "$MODULES_LOAD_CONTENT"
+  fi
   rm -rf "$WORKDIR"
 fi
 

@@ -40,7 +40,7 @@ PLAN.md             # product plan + interview decisions
    - No overwriting user configs: write new files only if missing, or append guarded by `grep -q` marker. Back up before edit (`cp -n file file.bak`).
 4. **Bash style:** `set -euo pipefail`, double-quote vars, functions named `step_*` / `ensure_*`. Support `DRY_RUN=1` env that echoes instead of executing.
 5. **TypeScript style:** `import { createCliRenderer, Box, Text } from "@opentui/core"`. Keep `index.ts` under ~300 lines; extract runner to `lib/runner.ts` if it grows. Stream child output line-by-line to log pane, never block renderer.
-6. **TUI keys (fixed):** `Space` toggle, `↑/↓` navigate, `Enter` run, `q` quit, `d` toggle dry-run. Keep single-screen "Checklist and Go" — do not add wizard pages without asking.
+6. **TUI keys (fixed):** `Space` toggle, `↑/↓` navigate, `Enter` review full plan, `Enter` again confirm / `Esc` back, `q` quit, `d` toggle dry-run. `Enter` must NEVER run anything directly — always via the `modules/99-preview.sh` confirm screen. Keep single-screen "Checklist and Go" — do not add wizard pages without asking.
 7. **Logging:** every run writes `logs/hopper-<YYYYMMDD-HHMMSS>.log`. Module output goes to both log pane + file. Final summary lists ✅/❌ per module.
 8. **fcitx specifics (locked):** packages = `fcitx5 fcitx5-configtool fcitx5-gtk fcitx5-qt fcitx5-chinese-addons fcitx5-mozc`. Env vars `GTK_IM_MODULE=fcitx`, `QT_IM_MODULE=fcitx`, `XMODIFIERS=@im=fcitx` via `~/.config/environment.d/fcitx.conf` (preferred) — do not edit `/etc/environment` unless user asks.
 

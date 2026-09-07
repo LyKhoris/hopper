@@ -90,7 +90,7 @@ Screens (single screen, no wizard):
  Log pane (scrollable, last 200 lines)
  Status bar: Arch? yay? counts
 ```
-- Keyboard: `Space` toggle, `↑/↓` move, `Enter` Run, `q` quit. Mouse optional via OpenTUI.
+- Keyboard: `Space` toggle, `↑/↓` move, `Enter` review plan, `Enter` again confirm / `Esc` back, `q` quit. NOTHING runs before the confirm screen.
 - Runner streams each module's output into log pane + `logs/hopper-<timestamp>.log`.
 - Shows final summary: ✅ / ❌ per module, "Log out/in may be needed for fcitx".
 - Dry-run mode just echoes commands, changes nothing.
@@ -103,6 +103,7 @@ Screens (single screen, no wizard):
 - [x] **Phase 4 — Scripts runner:** `30-scripts.sh` + `scripts/10-multilib.sh` + `scripts/20-opentabletdriver.sh` (cleaned, idempotent, DRY_RUN tested).
 - [x] **Phase 5 — TUI wiring:** `index.ts` checklist (Space/Up-Down/Enter/q/d) calls modules via Bun.spawn, logs to `logs/`. `bunx tsc --noEmit` passes.
 - [x] **Phase 6 — Polish:** `hopper.sh` remote one-liner (only installs git if missing) + `run.sh` (`--yes/--dry-run/--only/--list/--tui`) + `README.md`. Remaining: push to GitHub + set real `HOPPER_REPO` URL in `hopper.sh`, live test on a fresh hop.
+- [x] **Phase 7 — Preview + confirm (added after first live run):** `modules/99-preview.sh` prints every pending install/change (WILL INSTALL vs already done, incl. full-upgrade warning). `run.sh` always shows it then asks Y/n (reads `/dev/tty` so piped runs still confirm; aborts safely with no terminal). TUI: `Enter` opens the same preview, `Enter` again confirms, `Esc` backs out. Also fixed OTD script for repo move (`eng/linux/` → `eng/bash/`) with old-path + built-in fallbacks.
 - **v2 (out of scope):** dotfiles manager (bare git repo or stow), theming, Wayland autostart per-DE, snapshots.
 
 ## How to use (target UX)

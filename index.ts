@@ -16,7 +16,9 @@ const steps: Step[] = [
 let selected = 0; // which row is highlighted (0..steps.length = dry-run row)
 let dryRun = false;
 let running = false;
-let logLines: string[] = ["Ready. Space=toggle  Enter=run  d=dry-run  q=quit"];
+let screen: "list" | "confirm" | "running" = "list";
+let previewLines: string[] = [];
+let logLines: string[] = ["Ready. Space=toggle  Enter=review  d=dry-run  q=quit"];
 
 // Count packages + scripts for the labels (static, read once).
 async function counts(): Promise<{ pkgs: number; scripts: number }> {
@@ -75,6 +77,8 @@ async function runModule(step: Step, logFile: string): Promise<boolean> {
 async function runSelected() {
   if (running) return;
   running = true;
+  screen = "running";
+  render();
   const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
   const logFile = `logs/hopper-${ts}.log`;
   try {
@@ -94,6 +98,33 @@ async function runSelected() {
   }
   pushLog(failed ? "Done with ERRORS — see log above." : "All done. fcitx may need a log-out/in.");
   running = false;
+  screen = "list";
+  render();
+}
+
+// Confirm screen: show the FULL preview before anything runs.
+// Same source as `bash run.sh` (modules/99-preview.sh), so both agree.
+async function gotoConfirm() {
+  if (!steps.some((s) => s.checked)) {
+    pushLog("Nothing selected — tick at least one box first.");
+    return;
+  }
+  screen = "confirm";
+  previewLines = ["Checking what's already installed..."];
+  render();
+  try {
+    const only = steps.filter((s) => s.checked).map((s) => s.id).join(",");
+    const proc = Bun.spawn(["bash", "modules/99-preview.sh"], {
+      stdout: "pipe",
+      stderr: "pipe",
+      env: { ...process.env, HOPPER_ONLY: only },
+    });
+    const out = await new Response(proc.stdout).text();
+    await proc.exited;
+    previewLines = out.split("\n").map((l) => l.slice(0, 160));
+  } catch {
+    previewLines = ["Could not build preview. Run DRY_RUN=1 bash run.sh to see the plan."];
+  }
   render();
 }
 
@@ -111,27 +142,41 @@ root.add(footer);
 renderer.root.add(root);
 
 function render() {
+  // NOTE: proxied Text types content as StyledText, but the runtime accepts
+  // plain strings — cast to keep this vibe-simple.
+  if (screen === "confirm") {
+    const extra = previewLines.length > 30 ? `\n... (+${previewLines.length - 30} more)` : "";
+    (listText as any).content = "Review — about to install/run:";
+    (logText as any).content = previewLines.slice(0, 30).join("\n") + extra;
+    (footer as any).content = "Enter=yes, run it | Esc=no, go back";
+    renderer.requestRender();
+    return;
+  }
   const rows = steps.map((s, i) => {
     const box = s.checked ? "[x]" : "[ ]";
     const arrow = i === selected ? ">" : " ";
     return `${arrow} ${box} ${s.label}`;
   });
   const dryRow = `${selected === steps.length ? ">" : " "} ${dryRun ? "[x]" : "[ ]"} Dry run (print only, change nothing) [d]`;
-  // NOTE: proxied Text types content as StyledText, but the runtime accepts
-  // plain strings — cast to keep this vibe-simple.
   (listText as any).content = rows.join("\n") + "\n" + dryRow;
   (logText as any).content = "--- log ---\n" + logLines.slice(-12).join("\n");
-  (footer as any).content = running ? "Running... please wait" : "Space toggle | Up/Down move | Enter run | d dry-run | q quit";
+  (footer as any).content = screen === "running" ? "Running... please wait" : "Space toggle | Up/Down move | Enter review | d dry-run | q quit";
   renderer.requestRender();
 }
 
 renderer.keyInput.on("keypress", async (key: any) => {
   const name = key.name ?? key.sequence ?? "";
   if (name === "q" || (key.ctrl && name === "c")) {
+    if (screen === "running") return; // don't quit mid-install
     renderer.destroy();
     process.exit(0);
   }
-  if (running) return;
+  if (screen === "confirm") {
+    if (name === "return" || name === "enter" || name === "y") await runSelected();
+    else if (name === "escape" || name === "n") { screen = "list"; render(); }
+    return;
+  }
+  if (screen === "running") return;
   if (name === "up" || name === "k") {
     selected = (selected + steps.length) % (steps.length + 1);
     render();
@@ -146,7 +191,7 @@ renderer.keyInput.on("keypress", async (key: any) => {
     dryRun = !dryRun;
     render();
   } else if (name === "return" || name === "enter") {
-    await runSelected();
+    await gotoConfirm(); // Enter reviews first — nothing runs until confirmed
   }
 });
 

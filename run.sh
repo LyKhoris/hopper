@@ -71,22 +71,27 @@ if ! command -v pacman >/dev/null 2>&1; then
   exit 1
 fi
 
-# Show plan before doing anything.
+# Show the FULL plan first — every package and change — then ask.
+# Preview always prints, even with --yes (so logs show what was approved).
+export HOPPER_ONLY="$ONLY"
+bash "$HOPPER_ROOT/modules/99-preview.sh"
+
 LOGDIR="$HOPPER_ROOT/logs"
 mkdir -p "$LOGDIR"
 LOGFILE="$LOGDIR/hopper-$(date +%Y%m%d-%H%M%S).log"
-echo "Hopper will run:"
-for entry in "${SELECTED[@]}"; do
-  echo "  - ${entry%%:*} (${entry#*:})"
-done
 echo "Log: $LOGFILE"
 if [ "$DRY_RUN" = "1" ]; then
   echo "(dry-run: commands will only be printed)"
 fi
 if [ "$ASSUME_YES" -ne 1 ]; then
-  read -rp "Continue? [Y/n] " ans
+  # Read from the terminal, not stdin: stdin may be the piped script itself
+  # when run as `curl ... | bash`.
+  if ! read -rp "Install everything listed above? [Y/n] " ans < /dev/tty; then
+    echo "Aborted (no terminal to confirm — re-run with --yes to skip this check)."
+    exit 1
+  fi
   if [[ "$ans" =~ ^[Nn]$ ]]; then
-    echo "Aborted."
+    echo "Aborted, nothing changed."
     exit 0
   fi
 fi
