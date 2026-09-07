@@ -49,6 +49,43 @@ else
   log "Wrote env vars to $ENV_FILE"
 fi
 
+# Autostart via a systemd user service (works on any desktop/WM, no sudo).
+# fcitx5 ships no unit file, so we install our own. Never overwrites yours.
+UNIT_FILE="$HOME/.config/systemd/user/fcitx5.service"
+UNIT_CONTENT="[Unit]
+Description=Fcitx5 input method framework
+
+[Service]
+ExecStart=/usr/bin/fcitx5 --replace
+Restart=on-failure
+
+[Install]
+WantedBy=default.target"
+log "Ensuring fcitx5 autostart ($UNIT_FILE) ..."
+if [ "$DRY_RUN" = "1" ]; then
+  echo "+ write $UNIT_FILE + systemctl --user enable/start fcitx5 (dry-run, skipped)"
+else
+  mkdir -p "$(dirname "$UNIT_FILE")"
+  if [ ! -f "$UNIT_FILE" ]; then
+    echo "$UNIT_CONTENT" > "$UNIT_FILE"
+    log "Wrote $UNIT_FILE"
+  elif [ "$(cat "$UNIT_FILE")" = "$UNIT_CONTENT" ]; then
+    log "Autostart unit already correct, skipping."
+  else
+    log "Custom unit found, keeping yours and enabling as-is."
+  fi
+  if systemctl --user daemon-reload 2>/dev/null && systemctl --user enable fcitx5.service 2>/dev/null; then
+    log "fcitx5 will autostart on login."
+    if systemctl --user start fcitx5.service 2>/dev/null; then
+      log "fcitx5 started now (no logout needed for the daemon itself)."
+    else
+      log "Couldn't start fcitx5 right now — it will start on next login."
+    fi
+  else
+    echo "WARNING: no systemd user session here, autostart NOT enabled." >&2
+    echo "Add 'fcitx5 -d' to your desktop/WM autostart instead." >&2
+  fi
+fi
+
 echo ""
-log "fcitx5 done. Log out and back in, then run fcitx5-configtool to add Pinyin + Mozc."
-log "Tip: fcitx5 should autostart on most desktops. If not, add fcitx5 -d to your WM autostart."
+log "fcitx5 done. Run fcitx5-configtool to add Pinyin + Mozc (log out/in first if apps ignore input)."
