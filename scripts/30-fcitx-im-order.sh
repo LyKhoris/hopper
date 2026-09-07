@@ -19,12 +19,13 @@ current_items() {
 }
 
 if [ "${1:-}" = "--check" ]; then
-  # Applied = file exists, starts with EN -> Pinyin -> Mozc, English default.
+  # Applied = file exists and starts with EN -> Pinyin -> Mozc.
   # Extra input methods after those three are allowed (we don't wipe them).
+  # NOTE: DefaultIM is deliberately NOT checked — fcitx itself rewrites it to
+  # your last-used input method, which is normal and not worth fighting.
   [ -f "$PROFILE" ] || exit 1
   items="$(current_items)"
   [ "${items#keyboard-us pinyin mozc }" != "$items" ] || exit 1
-  grep -q "^DefaultIM=keyboard-us" "$PROFILE" 2>/dev/null || exit 1
   exit 0
 fi
 
