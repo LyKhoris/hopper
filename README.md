@@ -6,10 +6,9 @@ multilib, osu! tablet fix, plus your own scripts. Pick via checklist TUI or plai
 ## Use from a fresh install (no clone needed)
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/<you>/hopper/main/hopper.sh) --yes
+bash <(curl -fsSL https://raw.githubusercontent.com/LyKhoris/hopper/main/hopper.sh) --yes
 ```
 
-- Change `<you>` to your GitHub name, and `HOPPER_REPO` inside `hopper.sh` to your repo URL.
 - What it installs by itself: only `git` (if missing, needed to download hopper).
   Everything else is your own list below, which you can read on GitHub first.
 - Flags: `--yes` (skip confirm), `--dry-run` (print only), `--only bootstrap,packages,fcitx,scripts`, `--list`.
