@@ -30,12 +30,12 @@ skipped=0
 failed=0
 failed_list=""
 
-# Read packages.txt, ignore blank lines and # comments.
+# Read packages.txt, ignore blank lines and # comments (full-line or trailing).
 while IFS= read -r line || [ -n "$line" ]; do
-  # Trim leading/trailing whitespace.
-  pkg="$(echo "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-  # Skip empty lines and comments.
-  if [ -z "$pkg" ] || [[ "$pkg" == \#* ]]; then
+  # Strip trailing "# comment", then trim leading/trailing whitespace.
+  pkg="$(echo "$line" | sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+  # Skip empty lines (was blank or comment-only).
+  if [ -z "$pkg" ]; then
     continue
   fi
   if is_installed "$pkg"; then

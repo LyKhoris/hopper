@@ -38,7 +38,7 @@ script_title() {
 
 script_needs_run() {
   # script_needs_run <file> — false (skip) if it reports already applied.
-  if grep -q '^SUPPORTS_CHECK=1' "$1" 2>/dev/null && bash "$1" --check >/dev/null 2>&1; then
+  if grep -q '^[[:space:]]*SUPPORTS_CHECK=1' "$1" 2>/dev/null && bash "$1" --check >/dev/null 2>&1; then
     return 1
   fi
   return 0
@@ -62,8 +62,9 @@ if want packages || want fcitx; then
   all_pkgs=(); to_install=(); have_pkgs=()
   if want packages && [ -f "$HOPPER_ROOT/packages.txt" ]; then
     while IFS= read -r line || [ -n "$line" ]; do
-      pkg="$(echo "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-      if [ -z "$pkg" ] || [[ "$pkg" == \#* ]]; then
+      # Same parsing as 10-packages.sh: strip trailing "# comment", then trim.
+      pkg="$(echo "$line" | sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+      if [ -z "$pkg" ]; then
         continue
       fi
       collect "$pkg"
@@ -85,7 +86,15 @@ fi
 if want scripts; then
   shown=1
   titles_run=()
-  for s in "$HOPPER_ROOT"/scripts/[0-9]*-*.sh; do
+  # Same discovery as 30-scripts.sh (glob + sort).
+  shopt -s nullglob
+  _scripts=("$HOPPER_ROOT"/scripts/[0-9]*-*.sh)
+  shopt -u nullglob
+  _sorted=()
+  if [ "${#_scripts[@]}" -gt 0 ]; then
+    mapfile -t _sorted < <(printf '%s\n' "${_scripts[@]}" | sort)
+  fi
+  for s in ${_sorted[@]+"${_sorted[@]}"}; do
     if [ ! -f "$s" ]; then
       continue
     fi

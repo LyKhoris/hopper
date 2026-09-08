@@ -102,9 +102,20 @@ else
   fi
   rm -rf "$WORKDIR"
   git clone --depth 1 https://github.com/OpenTabletDriver/OpenTabletDriver.git "$WORKDIR"
-  # Generate + install udev rules.
-  bash "$WORKDIR/generate-rules.sh" | sudo tee /etc/udev/rules.d/70-opentabletdriver.rules >/dev/null
-  say "Wrote /etc/udev/rules.d/70-opentabletdriver.rules"
+  # Generate + install udev rules. The generator moved once already
+  # (eng/linux -> eng/bash), so don't assume its path: if it moves again,
+  # keep the existing valid rules instead of writing an empty file.
+  if [ -f "$WORKDIR/generate-rules.sh" ]; then
+    bash "$WORKDIR/generate-rules.sh" | sudo tee /etc/udev/rules.d/70-opentabletdriver.rules >/dev/null
+    say "Wrote /etc/udev/rules.d/70-opentabletdriver.rules"
+  elif grep -q "OpenTabletDriver" /etc/udev/rules.d/70-opentabletdriver.rules 2>/dev/null; then
+    say "WARNING: generate-rules.sh moved again, keeping your existing udev rules."
+  else
+    echo "ERROR: generate-rules.sh not found in the OTD repo and no working rules exist." >&2
+    echo "Check https://github.com/OpenTabletDriver/OpenTabletDriver for the new generator path." >&2
+    rm -rf "$WORKDIR"
+    exit 1
+  fi
 
   # Module configs: prefer the repo copy (new layout first, old layout
   # second), fall back to built-in content if both disappear one day.

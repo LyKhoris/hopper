@@ -7,10 +7,10 @@
     "start": "bun index.ts"
   },
   "dependencies": {
-    "@opentui/core": "latest"
+    "@opentui/core": "0.5.10"
   },
   "devDependencies": {
-    "typescript": "latest",
-    "@types/bun": "latest"
+    "typescript": "7.0.2",
+    "@types/bun": "1.4.1"
   }
 }

@@ -71,6 +71,26 @@ if [ -f "$PROFILE" ]; then
   say "Backed up existing profile to $PROFILE.bak"
 fi
 
+# Remember any extra input methods the user added (e.g. korean, chewing).
+# The order we enforce is EN -> Pinyin -> Mozc first; extras are kept after
+# them so a re-run never deletes someone's keyboard.
+extras=()
+if [ -f "$PROFILE" ]; then
+  while IFS= read -r name; do
+    [ -n "$name" ] || continue
+    if [ "$name" != "keyboard-us" ] && [ "$name" != "pinyin" ] && [ "$name" != "mozc" ]; then
+      dup=0
+      for e in ${extras[@]+"${extras[@]}"}; do
+        [ "$e" = "$name" ] && dup=1
+      done
+      [ "$dup" -eq 0 ] && extras+=("$name")
+    fi
+  done < <(awk '/^\[Groups\/0\/Items\/[0-9]+\]/{get=1; next} get==1 && /^Name=/{print substr($0,6); get=0}' "$PROFILE" 2>/dev/null || true)
+  if grep -q '^\[Groups/[1-9]' "$PROFILE" 2>/dev/null; then
+    say "WARNING: extra fcitx groups found — only Group 0 is rewritten, other groups are left in the .bak file."
+  fi
+fi
+
 cat > "$PROFILE" <<'EOF'
 [Groups/0]
 # Group Name
@@ -101,6 +121,20 @@ Layout=
 [GroupOrder]
 0=Default
 EOF
+# Re-append the extras we saved above, renumbered from 3 on.
+# (Insert before the [GroupOrder] footer so the file stays valid.)
+if [ "${#extras[@]}" -gt 0 ]; then
+  tmp="$(mktemp)"
+  grep -v '^\[GroupOrder\]' "$PROFILE" > "$tmp" || true
+  idx=3
+  for e in "${extras[@]}"; do
+    printf '\n[Groups/0/Items/%s]\n# Name\nName=%s\n# Layout\nLayout=\n' "$idx" "$e" >> "$tmp"
+    idx=$((idx + 1))
+  done
+  printf '\n[GroupOrder]\n0=Default\n' >> "$tmp"
+  mv "$tmp" "$PROFILE"
+  say "Kept your extra input methods: ${extras[*]}"
+fi
 say "Wrote $PROFILE"
 
 # Start the daemon again if it was running; otherwise first login picks it up.

@@ -12,7 +12,7 @@ Rules (kept simple on purpose):
 3. Support dry-run: wrap real changes so `DRY_RUN=1 bash scripts/30-foo.sh` only prints.
 4. Start each file with `set -euo pipefail`.
 5. Give it a short display name for the pre-install preview: `HOPPER_TITLE="Fix osu! tablet detection"`
-   (shown as `Scripts (2): Enable multilib repo, Fix osu! tablet detection`).
+   (shown as `Scripts to run (2): Enable multilib repo, Fix osu! tablet detection`).
    Without it, the filename is prettified automatically.
 6. Optional but recommended: support `--check` so applied scripts get skipped
    instantly (no re-running). Add `SUPPORTS_CHECK=1` at the top plus a block
@@ -27,7 +27,7 @@ Rules (kept simple on purpose):
    fi
    ```
    Keep the check to fast local reads only (no sudo, no network).
-5. To test one script: `DRY_RUN=1 bash scripts/NN-name.sh`, then for real: `bash scripts/NN-name.sh`.
+7. To test one script: `DRY_RUN=1 bash scripts/NN-name.sh`, then for real: `bash scripts/NN-name.sh`.
 
 The TUI checkbox "Run personal scripts" just runs all of these in order via `modules/30-scripts.sh`.
 To skip one temporarily, rename it to `NN-name.sh.off`.

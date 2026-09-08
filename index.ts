@@ -53,6 +53,19 @@ async function runModule(step: Step, logFile: string): Promise<boolean> {
   pushLog(`>>> [${step.id}] bash ${step.module}`);
   const env = { ...process.env, DRY_RUN: dryRun ? "1" : "0" };
   const proc = Bun.spawn(["bash", step.module], { stdout: "pipe", stderr: "pipe", env });
+  // Serialize all file appends through one promise chain so the stdout and
+  // stderr pumps can't interleave a read-modify-write and lose lines.
+  // (Bun.write overwrites, so concurrent read+write would drop output.)
+  let chain: Promise<void> = Promise.resolve();
+  const appendLog = (text: string): Promise<void> => {
+    chain = chain.then(async () => {
+      try {
+        const { appendFile } = await import("node:fs/promises");
+        await appendFile(logFile, text);
+      } catch {}
+    });
+    return chain;
+  };
   const pump = async (s: ReadableStream<Uint8Array> | null) => {
     if (!s) return;
     const reader = s.getReader();
@@ -62,15 +75,16 @@ async function runModule(step: Step, logFile: string): Promise<boolean> {
       if (done) break;
       const text = dec.decode(value);
       pushLog(text);
-      try {
-        const prev = await Bun.file(logFile).text().catch(() => "");
-        await Bun.write(logFile, prev + text);
-      } catch {}
+      await appendLog(text);
     }
   };
   await Promise.all([pump(proc.stdout), pump(proc.stderr)]);
   const code = await proc.exited;
-  pushLog(code === 0 ? `<<< [${step.id}] OK` : `<<< [${step.id}] FAILED (code ${code})`);
+  // Wait for pending appends so the log file has everything before we continue.
+  await chain;
+  const tail = code === 0 ? `<<< [${step.id}] OK` : `<<< [${step.id}] FAILED (code ${code})`;
+  pushLog(tail);
+  await appendLog(tail + "\n");
   return code === 0;
 }
 
@@ -138,8 +152,18 @@ async function gotoConfirm() {
       env: { ...process.env, HOPPER_ONLY: only },
     });
     const out = await new Response(proc.stdout).text();
-    await proc.exited;
-    previewLines = out.split("\n").flatMap((l) => wrapLine(l));
+    const errText = await new Response(proc.stderr).text();
+    const code = await proc.exited;
+    if (code !== 0 || !out.trim()) {
+      const errTail = errText.trim().split("\n").slice(-3).join("\n");
+      previewLines = [
+        `Preview failed (exit ${code}). Nothing was changed.`,
+        ...(errTail ? [errTail] : []),
+        "Run DRY_RUN=1 bash run.sh to see the plan.",
+      ].flatMap((l) => wrapLine(l));
+    } else {
+      previewLines = out.split("\n").flatMap((l) => wrapLine(l));
+    }
   } catch {
     previewLines = ["Could not build preview. Run DRY_RUN=1 bash run.sh to see the plan."];
   }

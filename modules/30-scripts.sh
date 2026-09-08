@@ -19,7 +19,14 @@ if [ ! -d "$SCRIPT_DIR" ]; then
 fi
 
 # Find numbered scripts, sorted. Ignores README and dotfiles.
-mapfile -t SCRIPTS < <(ls -1 "$SCRIPT_DIR"/[0-9]*-*.sh 2>/dev/null | sort || true)
+# Same discovery as 99-preview.sh (glob + sort, no `ls` parsing).
+shopt -s nullglob
+_unsorted=("$SCRIPT_DIR"/[0-9]*-*.sh)
+shopt -u nullglob
+SCRIPTS=()
+if [ "${_unsorted[@]+set}" = "set" ] && [ "${#_unsorted[@]}" -gt 0 ]; then
+  mapfile -t SCRIPTS < <(printf '%s\n' "${_unsorted[@]}" | sort)
+fi
 
 if [ "${#SCRIPTS[@]}" -eq 0 ]; then
   log "No scripts found in $SCRIPT_DIR, nothing to do."
@@ -34,7 +41,7 @@ failed_list=""
 for s in "${SCRIPTS[@]}"; do
   # Fast path: scripts advertising SUPPORTS_CHECK=1 can report "already
   # applied" without doing any work (no clone, no sudo, no network).
-  if grep -q '^SUPPORTS_CHECK=1' "$s" 2>/dev/null && bash "$s" --check >/dev/null 2>&1; then
+  if grep -q '^[[:space:]]*SUPPORTS_CHECK=1' "$s" 2>/dev/null && bash "$s" --check >/dev/null 2>&1; then
     log "$(basename "$s") already applied, skipping."
     ok=$((ok + 1))
     continue

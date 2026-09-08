@@ -15,6 +15,8 @@ usage() {
   echo "Usage: bash run.sh [--yes] [--dry-run] [--only a,b,c] [--list] [--tui]"
   echo "  steps: bootstrap, packages, fcitx, scripts"
   echo "  --tui needs bun + deps (bun install first), otherwise runs plain bash."
+  echo "  Env: STOP_ON_FAILURE=1 (default) stops at the first failing step/script."
+  echo "       STOP_ON_FAILURE=0 runs everything and reports at the end."
 }
 
 while [ $# -gt 0 ]; do

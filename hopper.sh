@@ -64,6 +64,11 @@ if [ -d "$HOPPER_DIR/.git" ]; then
     echo "WARNING: can't update hopper ($out $out2). Running local copy — may be outdated." >&2
   fi
 else
+  # Safety guard: HOPPER_DIR is wiped below, so refuse dangerous values.
+  if [ -z "$HOPPER_DIR" ] || [ "$HOPPER_DIR" = "/" ] || [ "$HOPPER_DIR" = "$HOME" ]; then
+    echo "ERROR: refusing to use HOPPER_DIR='$HOPPER_DIR'. Set it to a dedicated cache dir." >&2
+    exit 1
+  fi
   rm -rf "$HOPPER_DIR"
   if ! out=$(git clone --depth 1 --branch "$HOPPER_BRANCH" "$HOPPER_REPO" "$HOPPER_DIR" 2>&1); then
     echo "ERROR: clone failed:" >&2

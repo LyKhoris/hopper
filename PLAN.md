@@ -36,10 +36,14 @@ hopper/
   index.ts           # TUI entry: checklist + runner
   packages.txt       # user package list (one per line)
   modules/
+    _lib.sh            # shared helpers (log/step/run/ensure_arch/is_installed, DRY_RUN)
     00-bootstrap.sh  # verify Arch, sudo, install base-devel+git, install yay if missing
     10-packages.sh   # install all entries in packages.txt via yay (idempotent, skips installed)
-    20-fcitx.sh      # install fcitx5 + chinese-addons + mozc + config + env vars
+    20-fcitx.sh      # install fcitx5 + chinese-addons + mozc + config + env vars + autostart unit
     30-scripts.sh    # run scripts/*.sh in sorted order, stop-on-error optional
+    99-preview.sh     # print the plan (packages to install + scripts to run + skipped), installs nothing
+  hopper.sh          # remote entrypoint for the curl one-liner (fetches git + repo only)
+  run.sh             # local runner, same steps as the TUI (--yes/--dry-run/--only/--list/--tui)
   scripts/
     README.md        # "drop your .sh files here, numbered"
     .keep
@@ -110,6 +114,7 @@ Screens (single screen, no wizard):
 - [x] **Phase 11 — fcitx input order script:** `scripts/30-fcitx-im-order.sh` writes `~/.config/fcitx5/profile` (backed up first) with EN -> Pinyin -> Mozc + English default; `--check` passes if the order starts that way (extra IMs allowed); restarts the fcitx5 user service if active.
 - [x] **Phase 12 — stop-before-write fix:** fcitx5 saves its config ON EXIT, so `restart`-after-write let the old config clobber the new profile (diagnosed from the daemon-rewritten file on disk). Script now stops the daemon, waits for death, writes, then starts. Applied live + verified (daemon loaded pinyin addon, `--check` passes).
 - [x] **Phase 13 — immediate session apply:** order script pushes `GTK/QT_IM_MODULE` + `XMODIFIERS` into dbus + the systemd user manager after starting, so newly opened apps work with no logout. Already-open apps still need a restart (per-process env can't be changed from outside) — the script says so.
+- [x] **Phase 14 — review fixes:** TUI log appends serialized (no lost lines), preview shows errors instead of blank, `packages.txt` supports trailing `# comments`, OTD keeps existing udev rules if the generator moves again, fcitx order script preserves extra input methods, `hopper.sh` refuses dangerous `HOPPER_DIR`, fcitx unit uses the real `fcitx5` path, script discovery unified (glob+sort), multilib edit touches only its two lines, deps pinned (`@opentui/core` 0.5.10).
 - **v2 (out of scope):** dotfiles manager (bare git repo or stow), theming, Wayland autostart per-DE, snapshots.
 
 ## How to use (target UX)

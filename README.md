@@ -23,7 +23,7 @@ curl -fsSL https://lykhoris.github.io/hopper | bash
 ```bash
 git clone <your-hopper-url> && cd hopper
 bun install
-bun index.ts        # checklist TUI: Space toggle, Up/Down move, Enter run, d dry-run, q quit
+bun index.ts        # checklist TUI: Space toggle, Up/Down move, Enter review then Enter confirm, d dry-run, q quit
 # or without TUI:
 bash run.sh
 ```

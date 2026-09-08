@@ -52,11 +52,12 @@ fi
 # Autostart via a systemd user service (works on any desktop/WM, no sudo).
 # fcitx5 ships no unit file, so we install our own. Never overwrites yours.
 UNIT_FILE="$HOME/.config/systemd/user/fcitx5.service"
+FCITX_BIN="$(command -v fcitx5 2>/dev/null || echo /usr/bin/fcitx5)"
 UNIT_CONTENT="[Unit]
 Description=Fcitx5 input method framework
 
 [Service]
-ExecStart=/usr/bin/fcitx5 --replace
+ExecStart=${FCITX_BIN} --replace
 Restart=on-failure
 
 [Install]
