@@ -22,6 +22,12 @@ run sudo -v
 log "Ensuring base-devel + git..."
 run sudo pacman -Syu --needed --noconfirm base-devel git
 
+# Enable [multilib] BEFORE the packages step runs: steam, gamescope and
+# gamemode live there. Calls the same script the scripts step uses, so there
+# is still only one copy of this logic (safe to run twice, supports DRY_RUN).
+log "Ensuring [multilib] repo (needed for steam/games)..."
+DRY_RUN="$DRY_RUN" bash "$HOPPER_ROOT/scripts/10-multilib.sh"
+
 # Install yay-bin (prebuilt, faster than building yay from source).
 if command -v yay >/dev/null 2>&1; then
   log "yay already installed, skipping."

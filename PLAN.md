@@ -56,11 +56,13 @@ hopper/
 1. Check `/etc/os-release` + `pacman` exists, else exit with friendly message.
 2. Ensure `sudo` works (prompt once).
 3. `sudo pacman -Syu --needed --noconfirm base-devel git`
-4. If `yay` missing: `git clone https://aur.archlinux.org/yay-bin.git /tmp/yay-bin && makepkg -si --noconfirm`.
-5. Idempotent: exits 0 quickly if everything already present.
+4. Enable `[multilib]` via `scripts/10-multilib.sh` (steam/gamescope/gamemode live there — must happen before the packages step).
+5. If `yay` missing: `git clone https://aur.archlinux.org/yay-bin.git /tmp/yay-bin && makepkg -si --noconfirm`.
+6. Idempotent: exits 0 quickly if everything already present.
 
 ### 10-packages
 - Reads `../packages.txt`, strips comments/blank lines.
+- Enables `[multilib]` first via `scripts/10-multilib.sh` (steam/games live there) — no manual pre-step, works standalone.
 - For each pkg: `pacman -Q <pkg>` → skip if installed, else `yay -S --needed --noconfirm <pkg>`.
 - Log summary: installed / already-present / failed.
 - NEVER run `yay` as root with sudo (yay refuses). Run as normal user.

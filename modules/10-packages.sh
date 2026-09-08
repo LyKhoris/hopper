@@ -19,6 +19,12 @@ if ! command -v yay >/dev/null 2>&1; then
   exit 1
 fi
 
+# steam/gamescope/gamemode live in [multilib]. Enable it here too (not just
+# in bootstrap) so this step works standalone with no manual pre-step.
+# Same script the scripts step uses — safe to run twice, supports DRY_RUN.
+log "Ensuring [multilib] repo (needed for steam/games)..."
+DRY_RUN="$DRY_RUN" bash "$HOPPER_ROOT/scripts/10-multilib.sh"
+
 PKG_FILE="$HOPPER_ROOT/packages.txt"
 if [ ! -f "$PKG_FILE" ]; then
   echo "ERROR: $PKG_FILE not found." >&2
