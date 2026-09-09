@@ -45,7 +45,7 @@ while IFS= read -r line || [ -n "$line" ]; do
     continue
   fi
   if is_installed "$pkg"; then
-    log "$pkg already installed, skipping."
+    log_skip "$pkg already installed, skipping."
     skipped=$((skipped + 1))
   else
     log "Installing $pkg..."

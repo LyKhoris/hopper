@@ -28,6 +28,7 @@ Rules (kept simple on purpose):
    ```
    Keep the check to fast local reads only (no sudo, no network).
 7. To test one script: `DRY_RUN=1 bash scripts/NN-name.sh`, then for real: `bash scripts/NN-name.sh`.
+8. Keep re-runs quiet: already-done messages print only when `HOPPER_VERBOSE=1` (the preview already listed them). Summaries always print.
 
 The TUI checkbox "Run personal scripts" just runs all of these in order via `modules/30-scripts.sh`.
 To skip one temporarily, rename it to `NN-name.sh.off`.

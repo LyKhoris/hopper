@@ -42,4 +42,4 @@ bash run.sh
 - `scripts/` — `10-multilib` (enables multilib for steam/games), `20-opentabletdriver` (osu! tablet fix).
 - `index.ts` — OpenTUI checklist, calls the same modules.
 
-All steps are safe to run twice — they skip what's already done.
+All steps are safe to run twice — they skip what's already done (quietly; `HOPPER_VERBOSE=1` shows every skip).

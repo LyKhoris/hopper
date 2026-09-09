@@ -16,6 +16,14 @@ log() {
   echo "[hopper] $*"
 }
 
+log_skip() {
+  # Already-done noise. Hidden by default (the preview already listed it),
+  # shown with HOPPER_VERBOSE=1. Summaries always print.
+  if [ "${HOPPER_VERBOSE:-0}" = "1" ]; then
+    echo "[hopper] $*"
+  fi
+}
+
 step() {
   echo ""
   echo "=== $* ==="

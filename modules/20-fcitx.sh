@@ -26,7 +26,7 @@ UNIT_FILE="$HOME/.config/systemd/user/fcitx5.service"
 
 for pkg in $FCITX_PKGS; do
   if is_installed "$pkg"; then
-    log "$pkg already installed, skipping."
+    log_skip "$pkg already installed, skipping."
   else
     log "Installing $pkg..."
     run yay -S --needed --noconfirm "$pkg"
@@ -82,7 +82,7 @@ else
     echo "$UNIT_CONTENT" > "$UNIT_FILE"
     log "Wrote $UNIT_FILE"
   elif [ "$(cat "$UNIT_FILE")" = "$UNIT_CONTENT" ]; then
-    log "Autostart unit already correct, skipping."
+    log_skip "Autostart unit already correct, skipping."
   else
     log "Custom unit found, keeping yours and enabling as-is."
   fi

@@ -32,7 +32,7 @@ PLAN.md             # product plan + interview decisions
 
 ## Coding conventions
 1. **Vibe-code friendly:** prefer flat, commented Bash + small TS functions. No clever one-liners, no frameworks beyond `@opentui/core`. Explain every new file in `scripts/README.md` or code header.
-2. **Idempotency is mandatory:** every module must be safe to run twice. Pattern: check-before-do (`command -v yay`, `pacman -Q pkg`, `grep -q` before append). Print `already installed, skipping`.
+2. **Idempotency is mandatory:** every module must be safe to run twice. Pattern: check-before-do (`command -v yay`, `pacman -Q pkg`, `grep -q` before append). Report skips via `log_skip` (hidden unless `HOPPER_VERBOSE=1` — the preview already listed them); summaries always print.
 3. **Arch safety rules:**
    - Detect Arch: require `pacman` binary + ID_LIKE containing `arch` in `/etc/os-release`. Exit 1 with friendly message otherwise.
    - NEVER `sudo yay`. yay must run as normal user. Only `pacman -S` uses `sudo`.

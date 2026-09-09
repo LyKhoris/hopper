@@ -74,7 +74,10 @@ write_file() {
   # write_file <path> <content> — writes only if missing or different.
   local dest="$1" content="$2"
   if [ -f "$dest" ] && [ "$(cat "$dest")" = "$content" ]; then
-    say "$(basename "$dest") already correct, skipping."
+    # Quiet unless HOPPER_VERBOSE=1 (the preview already listed this skip).
+    if [ "${HOPPER_VERBOSE:-0}" = "1" ]; then
+      say "$(basename "$dest") already correct, skipping."
+    fi
     return 0
   fi
   if [ "$DRY_RUN" = "1" ]; then

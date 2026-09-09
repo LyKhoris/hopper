@@ -30,7 +30,7 @@ DRY_RUN="$DRY_RUN" bash "$HOPPER_ROOT/scripts/10-multilib.sh"
 
 # Install yay-bin (prebuilt, faster than building yay from source).
 if command -v yay >/dev/null 2>&1; then
-  log "yay already installed, skipping."
+  log_skip "yay already installed, skipping."
 else
   log "yay not found, installing yay-bin..."
   TMPDIR_YAY="/tmp/yay-bin-hopper"

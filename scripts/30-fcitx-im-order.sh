@@ -21,20 +21,31 @@ current_items() {
   awk '/^\[Groups\/0\/Items\/[0-9]+\]/{get=1; next} get==1 && /^Name=/{print; get=0}' "$PROFILE" 2>/dev/null | cut -d= -f2 | tr '\n' ' ' || true
 }
 
-if [ "${1:-}" = "--check" ]; then
-  # Applied = file exists and starts with EN -> Pinyin -> Mozc.
-  # Extra input methods after those three are allowed (we don't wipe them).
+profile_ok() {
+  # Order starts with EN -> Pinyin -> Mozc (extras after are allowed).
   # NOTE: DefaultIM is deliberately NOT checked — fcitx itself rewrites it to
   # your last-used input method, which is normal and not worth fighting.
-  [ -f "$PROFILE" ] || exit 1
+  [ -f "$PROFILE" ] || return 1
+  local items
   items="$(current_items)"
-  [ "${items#keyboard-us pinyin mozc }" != "$items" ] || exit 1
-  # Cloud Pinyin must be switched on (uncommented True, not a default comment).
-  grep -q "^CloudPinyinEnabled=True" "$PINYIN_CONF" 2>/dev/null || exit 1
-  exit 0
+  [ "${items#keyboard-us pinyin mozc }" != "$items" ]
+}
+
+cloud_ok() {
+  # Cloud Pinyin switched on (uncommented True, not a default comment).
+  grep -q "^CloudPinyinEnabled=True" "$PINYIN_CONF" 2>/dev/null
+}
+
+if [ "${1:-}" = "--check" ]; then
+  # Applied = order starts EN -> Pinyin -> Mozc AND cloud pinyin is on.
+  if profile_ok && cloud_ok; then
+    exit 0
+  else
+    exit 1
+  fi
 fi
 
-say "Setting fcitx input order: English -> Pinyin -> Mozc ..."
+say "Ensuring fcitx input setup (order + cloud pinyin) ..."
 
 for p in fcitx5 fcitx5-chinese-addons fcitx5-mozc; do
   if ! pacman -Q "$p" >/dev/null 2>&1; then
@@ -43,8 +54,22 @@ for p in fcitx5 fcitx5-chinese-addons fcitx5-mozc; do
   fi
 done
 
+# Only do what's missing — e.g. a re-run just for cloud pinyin must not
+# rewrite an already-correct profile. (|| lists keep set -e happy.)
+need_profile=0; profile_ok || need_profile=1
+need_cloud=0; cloud_ok || need_cloud=1
+if [ "$need_profile" -eq 0 ] && [ "$need_cloud" -eq 0 ]; then
+  say "Input order + cloud pinyin already applied, skipping."
+  exit 0
+fi
+
 if [ "$DRY_RUN" = "1" ]; then
-  echo "+ stop fcitx5, write $PROFILE (order: keyboard-us, pinyin, mozc), enable cloud pinyin in $PINYIN_CONF, start fcitx5 (dry-run, skipped)"
+  if [ "$need_profile" -eq 1 ]; then
+    echo "+ stop fcitx5, write $PROFILE (order: keyboard-us, pinyin, mozc), start fcitx5 (dry-run, skipped)"
+  fi
+  if [ "$need_cloud" -eq 1 ]; then
+    echo "+ enable cloud pinyin in $PINYIN_CONF (dry-run, skipped)"
+  fi
   echo "+ push env vars to this session so new apps work now (dry-run, skipped)"
   exit 0
 fi
@@ -53,11 +78,11 @@ fi
 # writing — otherwise it overwrites the new profile with the old one.
 was_running=0
 if systemctl --user is-active fcitx5.service >/dev/null 2>&1; then
-  say "Stopping fcitx5 first (it would overwrite the new profile otherwise) ..."
+  say "Stopping fcitx5 first (it would overwrite the new config otherwise) ..."
   systemctl --user stop fcitx5.service 2>/dev/null || true
   was_running=1
 elif [ -n "$(pgrep -x fcitx5 2>/dev/null || true)" ]; then
-  say "Stopping fcitx5 first (it would overwrite the new profile otherwise) ..."
+  say "Stopping fcitx5 first (it would overwrite the new config otherwise) ..."
   pkill -x fcitx5 2>/dev/null || true
   was_running=1
 fi
@@ -73,7 +98,9 @@ fi
 mkdir -p "$(dirname "$PROFILE")"
 if [ -f "$PROFILE" ]; then
   cp -n "$PROFILE" "$PROFILE.bak" 2>/dev/null || true
-  say "Backed up existing profile to $PROFILE.bak"
+  if [ "$need_profile" -eq 1 ]; then
+    say "Backed up existing profile to $PROFILE.bak"
+  fi
 fi
 
 # Remember any extra input methods the user added (e.g. korean, chewing).
@@ -96,6 +123,8 @@ if [ -f "$PROFILE" ]; then
   fi
 fi
 
+# Only rewrite a wrong profile — never touch one that's already correct.
+if [ "$need_profile" -eq 1 ]; then
 cat > "$PROFILE" <<'EOF'
 [Groups/0]
 # Group Name
@@ -126,9 +155,10 @@ Layout=
 [GroupOrder]
 0=Default
 EOF
+fi
 # Re-append the extras we saved above, renumbered from 3 on.
 # (Insert before the [GroupOrder] footer so the file stays valid.)
-if [ "${#extras[@]}" -gt 0 ]; then
+if [ "$need_profile" -eq 1 ] && [ "${#extras[@]}" -gt 0 ]; then
   tmp="$(mktemp)"
   grep -v '^\[GroupOrder\]' "$PROFILE" > "$tmp" || true
   idx=3
@@ -140,10 +170,15 @@ if [ "${#extras[@]}" -gt 0 ]; then
   mv "$tmp" "$PROFILE"
   say "Kept your extra input methods: ${extras[*]}"
 fi
-say "Wrote $PROFILE"
+if [ "$need_profile" -eq 1 ]; then
+  say "Wrote $PROFILE"
+else
+  say "Input order already correct, leaving profile alone."
+fi
 
 # Cloud Pinyin lives in the same stopped window: the daemon would also
 # clobber this file on exit. Flip the commented default to an active True.
+if [ "$need_cloud" -eq 1 ]; then
 mkdir -p "$(dirname "$PINYIN_CONF")"
 if [ -f "$PINYIN_CONF" ]; then
   cp -n "$PINYIN_CONF" "$PINYIN_CONF.bak" 2>/dev/null || true
@@ -154,6 +189,7 @@ else
   echo "CloudPinyinEnabled=True" >> "$PINYIN_CONF"
 fi
 say "Enabled cloud pinyin ($PINYIN_CONF)"
+fi
 
 # Start the daemon again if it was running; otherwise first login picks it up.
 if [ "$was_running" = "1" ]; then

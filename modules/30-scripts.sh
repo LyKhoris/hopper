@@ -42,7 +42,7 @@ for s in "${SCRIPTS[@]}"; do
   # Fast path: scripts advertising SUPPORTS_CHECK=1 can report "already
   # applied" without doing any work (no clone, no sudo, no network).
   if grep -q '^[[:space:]]*SUPPORTS_CHECK=1' "$s" 2>/dev/null && bash "$s" --check >/dev/null 2>&1; then
-    log "$(basename "$s") already applied, skipping."
+    log_skip "$(basename "$s") already applied, skipping."
     ok=$((ok + 1))
     continue
   fi

@@ -121,6 +121,7 @@ Screens (single screen, no wizard):
 - [x] **Phase 16 — fcitx skip-if-done:** `20-fcitx.sh` exits after one line (`fcitx5 already set up, skipping`) when packages + env file + autostart unit + enabled state are all in place — no more redundant enable/start on re-runs.
 - [x] **Phase 17 — nothing-to-do short-circuit:** `99-preview.sh` exits 2 when the selected steps need nothing (all packages installed, all scripts applied). `run.sh` then prints `Everything is already set up — nothing to do.` and exits 0 without asking; the TUI goes back to the list with the same message instead of showing confirm. Bootstrap-only selections always proceed (no cheap done-check).
 - [x] **Phase 18 — cloud pinyin:** `scripts/30-fcitx-im-order.sh` also flips `CloudPinyinEnabled` to `True` in `~/.config/fcitx5/conf/pinyin.conf` inside the same stop-daemon window (the daemon would clobber it on exit otherwise); `--check` requires it, so existing setups pick it up on next run.
+- [x] **Phase 19 — no redundant work or words:** the fcitx order script checks order + cloud separately and only applies what's missing (a cloud-only re-run leaves the profile untouched). Per-item skip noise is hidden by default via `log_skip` in `modules/_lib.sh` (preview already listed it) — `HOPPER_VERBOSE=1` restores it, summaries always print.
 - **v2 (out of scope):** dotfiles manager (bare git repo or stow), theming, Wayland autostart per-DE, snapshots.
 
 ## How to use (target UX)

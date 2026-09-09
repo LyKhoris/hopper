@@ -29,7 +29,10 @@ fi
 
 # Already enabled? [multilib] header + an active Include line means active.
 if grep -q "^\[multilib\]" "$PACMAN_CONF" && grep -q "^Include" "$PACMAN_CONF"; then
-  echo "[hopper] [multilib] already enabled, skipping."
+  # Quiet unless HOPPER_VERBOSE=1 (the preview already listed this skip).
+  if [ "${HOPPER_VERBOSE:-0}" = "1" ]; then
+    echo "[hopper] [multilib] already enabled, skipping."
+  fi
   exit 0
 fi
 
