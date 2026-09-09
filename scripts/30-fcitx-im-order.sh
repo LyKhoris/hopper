@@ -1,15 +1,18 @@
 #!/usr/bin/env bash
-# 30-fcitx-im-order: set fcitx5 input order to English -> Pinyin -> Mozc.
-# Writes ~/.config/fcitx5/profile (backed up first). Safe to run twice.
+# 30-fcitx-im-order: set fcitx5 input order to English -> Pinyin -> Mozc,
+# and enable Cloud Pinyin for Chinese input.
+# Writes ~/.config/fcitx5/profile + ~/.config/fcitx5/conf/pinyin.conf
+# (backed up first). Safe to run twice.
 # Needs the fcitx step done first (fcitx5 + chinese-addons + mozc installed).
 # DRY_RUN=1 supported.
-HOPPER_TITLE="Set fcitx order: English, Pinyin, Mozc"
+HOPPER_TITLE="Set fcitx order + cloud pinyin"
 # This script supports `--check`: exit 0 = already applied, exit 1 = work to do.
 SUPPORTS_CHECK=1
 set -euo pipefail
 
 DRY_RUN="${DRY_RUN:-0}"
 PROFILE="$HOME/.config/fcitx5/profile"
+PINYIN_CONF="$HOME/.config/fcitx5/conf/pinyin.conf"
 
 say() { echo "[fcitx-im] $*"; }
 
@@ -26,6 +29,8 @@ if [ "${1:-}" = "--check" ]; then
   [ -f "$PROFILE" ] || exit 1
   items="$(current_items)"
   [ "${items#keyboard-us pinyin mozc }" != "$items" ] || exit 1
+  # Cloud Pinyin must be switched on (uncommented True, not a default comment).
+  grep -q "^CloudPinyinEnabled=True" "$PINYIN_CONF" 2>/dev/null || exit 1
   exit 0
 fi
 
@@ -39,7 +44,7 @@ for p in fcitx5 fcitx5-chinese-addons fcitx5-mozc; do
 done
 
 if [ "$DRY_RUN" = "1" ]; then
-  echo "+ stop fcitx5, write $PROFILE (order: keyboard-us, pinyin, mozc), start fcitx5 (dry-run, skipped)"
+  echo "+ stop fcitx5, write $PROFILE (order: keyboard-us, pinyin, mozc), enable cloud pinyin in $PINYIN_CONF, start fcitx5 (dry-run, skipped)"
   echo "+ push env vars to this session so new apps work now (dry-run, skipped)"
   exit 0
 fi
@@ -136,6 +141,19 @@ if [ "${#extras[@]}" -gt 0 ]; then
   say "Kept your extra input methods: ${extras[*]}"
 fi
 say "Wrote $PROFILE"
+
+# Cloud Pinyin lives in the same stopped window: the daemon would also
+# clobber this file on exit. Flip the commented default to an active True.
+mkdir -p "$(dirname "$PINYIN_CONF")"
+if [ -f "$PINYIN_CONF" ]; then
+  cp -n "$PINYIN_CONF" "$PINYIN_CONF.bak" 2>/dev/null || true
+fi
+if grep -q "^[# ]*CloudPinyinEnabled=" "$PINYIN_CONF" 2>/dev/null; then
+  sed -i 's/^[# ]*CloudPinyinEnabled=.*/CloudPinyinEnabled=True/' "$PINYIN_CONF"
+else
+  echo "CloudPinyinEnabled=True" >> "$PINYIN_CONF"
+fi
+say "Enabled cloud pinyin ($PINYIN_CONF)"
 
 # Start the daemon again if it was running; otherwise first login picks it up.
 if [ "$was_running" = "1" ]; then
