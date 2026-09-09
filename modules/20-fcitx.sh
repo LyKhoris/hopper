@@ -21,6 +21,8 @@ fi
 
 # Fixed package list (locked per PLAN.md).
 FCITX_PKGS="fcitx5 fcitx5-configtool fcitx5-gtk fcitx5-qt fcitx5-chinese-addons fcitx5-mozc"
+ENV_FILE="$HOME/.config/environment.d/fcitx.conf"
+UNIT_FILE="$HOME/.config/systemd/user/fcitx5.service"
 
 for pkg in $FCITX_PKGS; do
   if is_installed "$pkg"; then
@@ -31,8 +33,18 @@ for pkg in $FCITX_PKGS; do
   fi
 done
 
+# Fast path: packages installed, env vars present, autostart unit in place
+# and enabled → fully set up, nothing to do (no sudo, no network, instant).
+if grep -q "GTK_IM_MODULE=fcitx" "$ENV_FILE" 2>/dev/null \
+  && grep -q "QT_IM_MODULE=fcitx" "$ENV_FILE" 2>/dev/null \
+  && grep -q "XMODIFIERS=@im=fcitx" "$ENV_FILE" 2>/dev/null \
+  && [ -f "$UNIT_FILE" ] \
+  && systemctl --user is-enabled fcitx5.service >/dev/null 2>&1; then
+  log "fcitx5 already set up, skipping."
+  exit 0
+fi
+
 # Env vars so apps actually use fcitx. Preferred location (no sudo needed).
-ENV_FILE="$HOME/.config/environment.d/fcitx.conf"
 log "Ensuring $ENV_FILE ..."
 if [ "$DRY_RUN" = "1" ]; then
   echo "+ write GTK_IM_MODULE=fcitx, QT_IM_MODULE=fcitx, XMODIFIERS=@im=fcitx to $ENV_FILE (dry-run, skipped)"
@@ -51,7 +63,6 @@ fi
 
 # Autostart via a systemd user service (works on any desktop/WM, no sudo).
 # fcitx5 ships no unit file, so we install our own. Never overwrites yours.
-UNIT_FILE="$HOME/.config/systemd/user/fcitx5.service"
 FCITX_BIN="$(command -v fcitx5 2>/dev/null || echo /usr/bin/fcitx5)"
 UNIT_CONTENT="[Unit]
 Description=Fcitx5 input method framework
