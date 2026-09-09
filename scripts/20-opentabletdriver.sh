@@ -36,6 +36,34 @@ run() {
   fi
 }
 
+# The running kernel must still have its modules. A kernel upgrade without
+# reboot (hopper's bootstrap does this) deletes the old modules, so modprobe
+# fails below with a cryptic FATAL. Catch it here with a plain explanation.
+running_kernel="$(uname -r)"
+if [ ! -d "/lib/modules/$running_kernel" ]; then
+  say "Your kernel was upgraded but you're still running the old one ($running_kernel)."
+  say "New drivers can't load until you reboot. After reboot, run hopper again — it skips what's done and finishes this fix."
+  if [ "$DRY_RUN" = "1" ]; then
+    echo "+ ask to reboot now (dry-run, skipped)"
+  else
+    ans=""
+    # Read from the terminal, not stdin: stdin may be piped (curl | bash, TUI).
+    if read -rp "Reboot now? [Y/n] " ans < /dev/tty; then
+      if [[ ! "$ans" =~ ^[Nn]$ ]]; then
+        say "Rebooting — run hopper again after the machine comes back."
+        if sudo systemctl reboot; then
+          exit 0
+        else
+          say "Couldn't reboot automatically — reboot manually, then run hopper again."
+          exit 1
+        fi
+      fi
+    fi
+    say "OK — reboot whenever ready, then run hopper again to finish this fix."
+    exit 1
+  fi
+fi
+
 # Known-good config content (verified against OTD repo). Used only if the
 # repo no longer ships these files.
 MODPROBE_CONTENT='install wacom /usr/bin/true
