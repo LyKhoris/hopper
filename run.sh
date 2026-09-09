@@ -80,7 +80,16 @@ mkdir -p "$LOGDIR"
 LOGFILE="$LOGDIR/hopper-$(date +%Y%m%d-%H%M%S).log"
 
 export HOPPER_ONLY="$ONLY"
-bash "$HOPPER_ROOT/modules/99-preview.sh"
+# Preview exits 2 when the selected steps need nothing — then there is
+# nothing to confirm and nothing to run. (Guarded for set -e.)
+preview_code=0
+bash "$HOPPER_ROOT/modules/99-preview.sh" || preview_code=$?
+if [ "$preview_code" -eq 2 ]; then
+  echo "Everything is already set up — nothing to do."
+  exit 0
+elif [ "$preview_code" -ne 0 ]; then
+  exit "$preview_code"
+fi
 
 if [ "$ASSUME_YES" -ne 1 ]; then
   # Read from the terminal, not stdin: stdin may be the piped script itself

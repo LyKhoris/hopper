@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # 99-preview: package list + script list, nothing else. Installs nothing.
-# Shown before every run (CLI question + TUI confirm screen). Always exits 0.
+# Shown before every run (CLI question + TUI confirm screen).
+# Exits 0 when there is work to do, 2 when the selected steps need nothing
+# (callers skip confirmation entirely then).
 # Env: HOPPER_ONLY="bootstrap,packages,fcitx,scripts" (empty = all).
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
@@ -56,10 +58,15 @@ join_pretty() {
 
 shown=0
 skipped=() # installed package names + applied script titles (shown below)
+titles_run=() # script titles that still need running (empty = none)
+pkgs_missing=0 # packages.txt wanted but not found (10-packages.sh would fail)
 
 if want packages || want fcitx; then
   shown=1
   all_pkgs=(); to_install=(); have_pkgs=()
+  if want packages && [ ! -f "$HOPPER_ROOT/packages.txt" ]; then
+    pkgs_missing=1
+  fi
   if want packages && [ -f "$HOPPER_ROOT/packages.txt" ]; then
     while IFS= read -r line || [ -n "$line" ]; do
       # Same parsing as 10-packages.sh: strip trailing "# comment", then trim.
@@ -116,5 +123,12 @@ fi
 
 if [ "$shown" -eq 0 ]; then
   echo "(preview only covers packages + scripts)"
+fi
+
+# Nothing selected needs work (and no missing input file): tell callers to
+# skip confirmation entirely. Bootstrap-only selections always proceed
+# (shown == 0) since bootstrap has no cheap done-check.
+if [ "$shown" -eq 1 ] && [ "${#to_install[@]}" -eq 0 ] && [ "${#titles_run[@]}" -eq 0 ] && [ "$pkgs_missing" -eq 0 ]; then
+  exit 2
 fi
 exit 0

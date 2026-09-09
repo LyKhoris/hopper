@@ -154,6 +154,13 @@ async function gotoConfirm() {
     const out = await new Response(proc.stdout).text();
     const errText = await new Response(proc.stderr).text();
     const code = await proc.exited;
+    if (code === 2) {
+      // Selected steps need nothing — skip the confirm screen entirely.
+      screen = "list";
+      pushLog("Everything is already set up — nothing to do.");
+      render();
+      return;
+    }
     if (code !== 0 || !out.trim()) {
       const errTail = errText.trim().split("\n").slice(-3).join("\n");
       previewLines = [
